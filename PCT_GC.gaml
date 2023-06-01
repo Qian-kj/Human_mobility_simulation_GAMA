@@ -169,6 +169,8 @@ species people skills:[moving] {
 	 
 	reflex move when: the_target != nil {
 		do goto target: the_target on: the_graph ; 
+		
+		
 		if the_target = location {
 			the_target <- nil ;
 		}
