@@ -34,7 +34,7 @@ global {
 	float average_allowance ;
 	float target_year ;
 	
-	float emission ;
+
 	float initial_emission <- 182.0 ;
 	float total_emission;
 	float supply ;
@@ -64,7 +64,7 @@ global {
 			market_value <- total_supply * price ;
 			target_year <- 10.0 ;
 			target_emission <- 75.0 ;
-			allowance_rate <- (initial_emission - target_emission)/(target_year * emission) ;
+			allowance_rate <- (initial_emission - target_emission)/(target_year * total_emission) ;
 			
 		}  
 		
@@ -79,7 +79,7 @@ global {
 		}
 		
 	}
-	reflex Go{
+	reflex carbon_marketing{
             //每十二个月更新一下allowance
     
             if (cycle > 0 and (cycle mod 12) = 0)
@@ -144,6 +144,18 @@ species people skills:[moving] {
 	int end_work  ;
 	string objective ; 
 	point the_target <- nil ;
+	
+	float emission ;
+	float allowance <- emission * allowance_rate ;
+	float diff <- allowance - emission ;
+	float demand ;
+	float supply ;
+	float reward ;
+	float travel_mode ;
+	float travel_distance ;
+	float travel_speed ;
+	float travel_time ;
+	
 		
 	reflex time_to_work when: current_date.hour = start_work and objective = "resting"{
 		objective <- "working" ;
