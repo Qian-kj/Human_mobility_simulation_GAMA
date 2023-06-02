@@ -21,8 +21,6 @@ global {
 	int max_work_start <- 8;
 	int min_work_end <- 16; 
 	int max_work_end <- 20; 
-	float min_speed ;
-	float max_speed ; 
 	
 	float allowance_rate ;
 	float total_supply ;
@@ -69,7 +67,6 @@ global {
 		}  
 		
 		create people number: nb_people {
-			speed <- rnd(min_speed, max_speed);
 			start_work <- rnd (min_work_start, max_work_start);
 			end_work <- rnd(min_work_end, max_work_end);
 			living_place <- one_of(residential_buildings);
@@ -173,24 +170,19 @@ species people skills:[moving] {
 		list trave_mode <- 1 among['car', 'bus', 'bicycle'] ;
 		if travel_mode = ['car']{
 			carbon_cost <- 182.0 ;
-			min_speed <- 10.0 ;
-			max_speed <- 50.0 ;
-			
+			speed <- rnd(10.0, 50.0);
 		}
 		else if travel_mode = ['bus']{
 			carbon_cost <- 25.0 ;
-			min_speed <- 1.0 ;
-			max_speed <- 30.0 ;
+			speed <- rnd(1.0, 30.0) ; 
 		}
 		else if travel_mode = ['bicycle']{
 			carbon_cost <- 0.0 ;
-			min_speed <- 1.0 ;
-			max_speed <- 15.0 ;
+			speed <- rnd(1.0, 15.0) ;
 		}
 		else{
 			carbon_cost <- 0.0 ;
-			min_speed <- 1.0 ;
-			max_speed <- 5.0 ;
+			speed <- rnd(1.0, 5.0) ;
 		}
 		
 		if the_target = location {
