@@ -21,8 +21,8 @@ global {
 	int max_work_start <- 8;
 	int min_work_end <- 16; 
 	int max_work_end <- 20; 
-	float min_speed <- 1.0 #km / #h;
-	float max_speed <- 5.0 #km / #h; 
+	float min_speed ;
+	float max_speed ; 
 	
 	float allowance_rate ;
 	float total_supply ;
@@ -106,11 +106,11 @@ global {
                 //according to p(t+1)-pt=α(Dt-St) = p_t+1 = p_t + alpha * (dempandpool - allowpool_new)
                 price <- price + alpha * (total_demand / nb_people - total_supply_new / nb_people);
              }
-             total_supply <- total_supply_new;
-             total_supply_new <- 0.0;
-             total_demand <- 0.0;
+             total_supply <- total_supply_new ;
+             total_supply_new <- 0.0 ;
+             total_demand <- 0.0 ;
              // ensure the price stays positive / price cannot fall below 0.001 but can increase limitless
-             price <- max ([ price, 0.001]);
+             price <- max ([ price, 0.001]) ;
       
     }
 }
@@ -142,7 +142,7 @@ species people skills:[moving] {
 	building working_place <- nil ;
 	int start_work ;
 	int end_work  ;
-	string objective ; 
+	string objective ;
 	point the_target <- nil ;
 	
 	float emission ;
@@ -151,10 +151,11 @@ species people skills:[moving] {
 	float demand ;
 	float supply ;
 	float reward ;
-	float travel_mode ;
+	list travel_mode ;
 	float travel_distance ;
 	float travel_speed ;
 	float travel_time ;
+	float carbon_cost ;
 	
 		
 	reflex time_to_work when: current_date.hour = start_work and objective = "resting"{
@@ -164,12 +165,33 @@ species people skills:[moving] {
 		
 	reflex time_to_go_home when: current_date.hour = end_work and objective = "working"{
 		objective <- "resting" ;
-		the_target <- any_location_in (living_place); 
+		the_target <- any_location_in (living_place);
 	} 
 	 
 	reflex move when: the_target != nil {
-		do goto target: the_target on: the_graph ; 
-		
+		do goto target: the_target on: the_graph ;
+		list trave_mode <- 1 among['car', 'bus', 'bicycle'] ;
+		if travel_mode = ['car']{
+			carbon_cost <- 182.0 ;
+			min_speed <- 10.0 ;
+			max_speed <- 50.0 ;
+			
+		}
+		else if travel_mode = ['bus']{
+			carbon_cost <- 25.0 ;
+			min_speed <- 1.0 ;
+			max_speed <- 30.0 ;
+		}
+		else if travel_mode = ['bicycle']{
+			carbon_cost <- 0.0 ;
+			min_speed <- 1.0 ;
+			max_speed <- 15.0 ;
+		}
+		else{
+			carbon_cost <- 0.0 ;
+			min_speed <- 1.0 ;
+			max_speed <- 5.0 ;
+		}
 		
 		if the_target = location {
 			the_target <- nil ;
