@@ -56,9 +56,18 @@ global {
 		list<building> industrial_buildings <- building  where (each.type="Industrial") ;
 		
 		create government number: 1 {
-			total_supply <- supply * nb_people ;
-			total_demand <- demand * nb_people ;
-			price <- alpha * (demand-supply) + price ;
+			list thelist <-list (species_of (people)); 
+               if(not empty(thelist)){
+                  loop i from: 0 to: length (thelist) - 1 
+                  { 
+    	              ask thelist at i{
+    	              	total_supply <- total_supply + supply ;
+    	              	total_demand <- total_demand + demand ;
+    	              }
+                  } 
+         
+                } 
+			price <- alpha * (total_demand-total_supply) + price ;
 			market_value <- total_supply * price ;
 			target_year <- 10.0 ;
 			target_emission <- 75.0 ;
@@ -153,16 +162,18 @@ species people skills:[moving] {
 	float travel_speed ;
 	float travel_time ;
 	float carbon_cost ;
-	
+	float distance ;
 		
 	reflex time_to_work when: current_date.hour = start_work and objective = "resting"{
 		objective <- "working" ;
 		the_target <- any_location_in (working_place);
+		distance <- location distance_to the_target ;
 	}
 		
 	reflex time_to_go_home when: current_date.hour = end_work and objective = "working"{
 		objective <- "resting" ;
 		the_target <- any_location_in (living_place);
+		distance <- location distance_to the_target ;
 	} 
 	 
 	reflex move when: the_target != nil {
@@ -187,8 +198,23 @@ species people skills:[moving] {
 		
 		if the_target = location {
 			the_target <- nil ;
+			travel_time <- distance / speed ;
+			emission <- carbon_cost * distance ;
 		}
 	}
+	reflex go{
+        diff <- allowance * number_persons - demand ;
+
+        float noa <- abs(diff) ; // the value for "number of allowances" left after demand subtracted
+
+
+        // if an agent needs to buy allowances, it shall buy them if available
+        //如果这家需要买, 市场上有, 并且买得起
+        if ((diff < 0.0) and (allowpool > noa) and (price * CarbonVal * noa < income * IncomePercentAvailable))
+        {
+            allowpool <- allowpool - noa ;//更新allowance池和需求池
+            demandpool <- demandpool + noa ;
+        }
 	
 	aspect base {
 		draw circle(10) color: color border: #black;
