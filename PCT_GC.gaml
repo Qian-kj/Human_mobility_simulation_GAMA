@@ -55,25 +55,6 @@ global {
 		list<building> residential_buildings <- building where (each.type="Residential");
 		list<building> industrial_buildings <- building  where (each.type="Industrial") ;
 		
-		create government number: 1 {
-			list thelist <-list (species_of (people)); 
-               if(not empty(thelist)){
-                  loop i from: 0 to: length (thelist) - 1 
-                  { 
-    	              ask thelist at i{
-    	              	total_supply <- total_supply + supply ;
-    	              	total_demand <- total_demand + demand ;
-    	              }
-                  } 
-         
-                } 
-			price <- alpha * (total_demand-total_supply) + price ;
-			market_value <- total_supply * price ;
-			target_year <- 10.0 ;
-			target_emission <- 75.0 ;
-			allowance_rate <- (initial_emission - target_emission)/(target_year * total_emission) ;
-			
-		}  
 		
 		create people number: nb_people {
 			start_work <- rnd (min_work_start, max_work_start);
@@ -96,27 +77,33 @@ global {
                if(not empty(thelist)){
                   loop i from: 0 to: length (thelist) - 1 
                   { 
-    	              ask thelist at i{av <- av + (demand - BaseDemand) / BaseDemand;}
+    	              ask thelist at i{
+    	              	av <- av + (demand - BaseDemand) / BaseDemand;
+    	              	total_supply_new <- total_supply_new + supply ;
+    	              	total_demand <- total_demand + demand ;
+    	              }
                   } 
          
                 } 
          
-               av<- av/length(thelist);
+         	   price <- price + alpha * (total_demand / nb_people - total_supply_new / nb_people);
+         	   total_supply <- total_supply_new ;
+         	   total_supply_new <- 0.0 ;
+         	   total_demand <-0.0 ;
+         	   price <- max ([ price, 0.001]) ;
+         	   
+         	   market_value <- total_supply * price ;
+			   target_year <- 10.0 ;
+			   target_emission <- 75.0 ;
+         	   allowance_rate <- (initial_emission - target_emission)/(target_year * total_emission) ;
+               av <- av/length(thelist);
                averageReduce <- (-100) * av; //this is the average amount households have reduced
-               allowance <- (allowance - allowance * (target + sensitivity * (target - averageReduce)) / 100); //the second term adjusts the amount reduced depending on how far away the true reduction is from the target
+               
                ask agents of_species household { BaseDemand <- demand; }
              }
 
-             //更新allowance市价
-      	     if (cycle > 4) {
-                //according to p(t+1)-pt=α(Dt-St) = p_t+1 = p_t + alpha * (dempandpool - allowpool_new)
-                price <- price + alpha * (total_demand / nb_people - total_supply_new / nb_people);
-             }
-             total_supply <- total_supply_new ;
-             total_supply_new <- 0.0 ;
-             total_demand <- 0.0 ;
-             // ensure the price stays positive / price cannot fall below 0.001 but can increase limitless
-             price <- max ([ price, 0.001]) ;
+     
+             
       
     }
 }
@@ -138,9 +125,6 @@ species road  {
 	}
 }
 
-species government {
-	
-}
 
 species people skills:[moving] {
 	rgb color <- #yellow ;
@@ -202,8 +186,8 @@ species people skills:[moving] {
 			emission <- carbon_cost * distance ;
 		}
 	}
-	reflex go{
-        diff <- allowance * number_persons - demand ;
+	reflex carbon_trading{
+        diff <- total_supply_new - demand ;
 
         float noa <- abs(diff) ; // the value for "number of allowances" left after demand subtracted
 
