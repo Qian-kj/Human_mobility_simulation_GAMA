@@ -35,8 +35,6 @@ global {
 
 	float initial_emission <- 182.0 ;
 	float total_emission;
-	float supply ;
-	float demand ;
 	float alpha ;
 	float market_value ;
 	float target_emission ;
@@ -101,10 +99,6 @@ global {
                
                ask agents of_species household { BaseDemand <- demand; }
              }
-
-     
-             
-      
     }
 }
 
@@ -136,8 +130,10 @@ species people skills:[moving] {
 	point the_target <- nil ;
 	
 	float emission ;
+	float total_emission_per ;
 	float allowance <- emission * allowance_rate ;
-	float diff <- allowance - emission ;
+	float availability ;
+	float diff <- allowance - total_emission_per;
 	float demand ;
 	float supply ;
 	float reward ;
@@ -184,22 +180,38 @@ species people skills:[moving] {
 			the_target <- nil ;
 			travel_time <- distance / speed ;
 			emission <- carbon_cost * distance ;
+			total_emission_per <- total_emission_per + emission ;
+			}
 		}
-	}
+	
 	reflex carbon_trading{
-        diff <- total_supply_new - demand ;
+		if diff < 0.0{
+			demand <- diff ;
+		}
+		else {
+			supply <- diff ;
+		}
+		
+	
+        availability <- total_supply - demand ;
 
-        float noa <- abs(diff) ; // the value for "number of allowances" left after demand subtracted
+        float noa <- abs(availability) ; // the value for "number of allowances" left after demand subtracted
 
 
         // if an agent needs to buy allowances, it shall buy them if available
-        //如果这家需要买, 市场上有, 并且买得起
-        if ((diff < 0.0) and (allowpool > noa) and (price * CarbonVal * noa < income * IncomePercentAvailable))
+        if ((availability < 0.0) and (total_supply > noa))
         {
-            allowpool <- allowpool - noa ;//更新allowance池和需求池
-            demandpool <- demandpool + noa ;
+            total_supply <- total_supply - demand ;
+            total_demand <- total_demand + demand ;
         }
-	
+		
+		// if there is no allowance
+		else if ((availability < 0.0) and (total_supply < noa))
+        {
+            ycolor <- #yellow;
+            total_demand <- total_demand + demand ;
+        }
+		
 	aspect base {
 		draw circle(10) color: color border: #black;
 	}
