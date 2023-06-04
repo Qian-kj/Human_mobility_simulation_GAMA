@@ -191,26 +191,28 @@ species people skills:[moving] {
 		else {
 			supply <- diff ;
 		}
-		
-	
-        availability <- total_supply - demand ;
 
-        float noa <- abs(availability) ; // the value for "number of allowances" left after demand subtracted
-
-
+        float noa <- abs(diff) ; // the value for "number of allowances" left after demand subtracted
         // if an agent needs to buy allowances, it shall buy them if available
-        if ((availability < 0.0) and (total_supply > noa))
+        if ((diff < 0.0) and (total_supply > noa))
         {
-            total_supply <- total_supply - demand ;
-            total_demand <- total_demand + demand ;
+            total_supply <- total_supply - noa ;
+            total_demand <- total_demand + noa ;
         }
 		
 		// if there is no allowance
-		else if ((availability < 0.0) and (total_supply < noa))
+		else if ((diff < 0.0) and (total_supply < noa))
         {
             ycolor <- #yellow;
-            total_demand <- total_demand + demand ;
+            total_demand <- total_demand + noa ;
         }
+        
+        // if there is extra allowance
+        else if (diff > 0.0)
+        {
+        	total_supply <- total_supply + noa ;
+        }
+
 		
 	aspect base {
 		draw circle(10) color: color border: #black;
