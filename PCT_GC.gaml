@@ -69,14 +69,14 @@ global {
     
             if (cycle > 0 and (cycle mod 12) = 0)
             {
-      	       float av<-0.0;
+//      	       float av<-0.0;
       	 
       	       list thelist <-list (species_of (people)); 
                if(not empty(thelist)){
                   loop i from: 0 to: length (thelist) - 1 
                   { 
     	              ask thelist at i{
-    	              	av <- av + (demand - BaseDemand) / BaseDemand;
+//    	              	av <- av + (demand - BaseDemand) / BaseDemand;
     	              	total_supply_new <- total_supply_new + supply ;
     	              	total_demand <- total_demand + demand ;
     	              }
@@ -84,7 +84,7 @@ global {
          
                 } 
          
-         	   price <- price + alpha * (total_demand / nb_people - total_supply_new / nb_people);
+         	   price <- price + alpha * (total_demand - total_supply_new) ;
          	   total_supply <- total_supply_new ;
          	   total_supply_new <- 0.0 ;
          	   total_demand <-0.0 ;
@@ -94,10 +94,10 @@ global {
 			   target_year <- 10.0 ;
 			   target_emission <- 75.0 ;
          	   allowance_rate <- (initial_emission - target_emission)/(target_year * total_emission) ;
-               av <- av/length(thelist);
-               averageReduce <- (-100) * av; //this is the average amount households have reduced
-               
-               ask agents of_species household { BaseDemand <- demand; }
+//               av <- av/length(thelist) ;
+//               averageReduce <- (-100) * av ; //this is the average amount households have reduced
+//               
+//               ask agents of_species household { BaseDemand <- demand ; }
              }
     }
 }
@@ -121,7 +121,7 @@ species road  {
 
 
 species people skills:[moving] {
-	rgb color <- #yellow ;
+	rgb pcolor <- #yellow ;
 	building living_place <- nil ;
 	building working_place <- nil ;
 	int start_work ;
@@ -143,7 +143,9 @@ species people skills:[moving] {
 	float travel_time ;
 	float carbon_cost ;
 	float distance ;
-		
+	float total_distance ;
+	
+	
 	reflex time_to_work when: current_date.hour = start_work and objective = "resting"{
 		objective <- "working" ;
 		the_target <- any_location_in (working_place);
@@ -203,7 +205,7 @@ species people skills:[moving] {
 		// if there is no allowance
 		else if ((diff < 0.0) and (total_supply < noa))
         {
-            ycolor <- #yellow;
+            pcolor <- #red;
             total_demand <- total_demand + noa ;
         }
         
@@ -213,9 +215,9 @@ species people skills:[moving] {
         	total_supply <- total_supply + noa ;
         }
 
-		
+	}
 	aspect base {
-		draw circle(10) color: color border: #black;
+		draw circle(10) color: pcolor border: #black;
 	}
 }
 
@@ -229,14 +231,19 @@ experiment road_traffic type: gui {
 	parameter "Latest hour to start work" var: max_work_start category: "People" min: 8 max: 12;
 	parameter "Earliest hour to end work" var: min_work_end category: "People" min: 12 max: 16;
 	parameter "Latest hour to end work" var: max_work_end category: "People" min: 16 max: 23;
-	parameter "minimal speed" var: min_speed category: "People" min: 0.1 #km/#h ;
-	parameter "maximal speed" var: max_speed category: "People" max: 10 #km/#h;
+
 	
 	output {
 		display city_display type: 3d {
 			species building aspect: base ;
 			species road aspect: base ;
 			species people aspect: base ;
+		}
+		display chart_display refresh: every(10#cycles)  type: 2d { 
+			chart "People Objectif" type: pie style: exploded size: {1, 0.5} position: {0, 0.5}{
+				data "Working" value: people count (each.objective="working") color: #magenta ;
+				data "Resting" value: people count (each.objective="resting") color: #blue ;
+			}
 		}
 	}
 }
