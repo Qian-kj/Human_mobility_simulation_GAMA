@@ -8,6 +8,7 @@
 
 model PCTGC
 
+
 /* Insert your model definition here */
 global {
 	file shape_file_buildings <- file("../includes/building.shp");
@@ -16,7 +17,7 @@ global {
 	geometry shape <- envelope(shape_file_bounds);
 	float step <- 10 #mn;
 	date starting_date <- date("2019-09-01-00-00-00");
-	int nb_people <- 100;
+	int nb_people <- 1;
 	int min_work_start <- 6;
 	int max_work_start <- 8;
 	int min_work_end <- 16; 
@@ -29,15 +30,14 @@ global {
 	float price ;
 	float initial_price <- 0.1 ;
 	float average_reduction ;
-	float average_allowance ;
-	float target_year ;
-	
+	float average_allowance ;	
 
 	float initial_emission <- 182.0 ;
+	float target_emission <- 75.0 ;
+	float target_year <- 10.0 ;
 	float total_emission;
 	float alpha ;
 	float market_value ;
-	float target_emission ;
 	
 	graph the_graph;
 	
@@ -53,7 +53,6 @@ global {
 		list<building> residential_buildings <- building where (each.type="Residential");
 		list<building> industrial_buildings <- building  where (each.type="Industrial") ;
 		
-		
 		create people number: nb_people {
 			start_work <- rnd (min_work_start, max_work_start);
 			end_work <- rnd(min_work_end, max_work_end);
@@ -62,26 +61,19 @@ global {
 			objective <- "resting";
 			location <- any_location_in (living_place); 
 		}
-		
 	}
 	reflex carbon_marketing{
-            //每十二个月更新一下allowance
-    
-            if (cycle > 0 and (cycle mod 12) = 0)
-            {
-//      	       float av<-0.0;
-      	 
+            //update annual allowance rate
+            if (cycle > 0 and (cycle mod 12) = 0) {
       	       list thelist <-list (species_of (people)); 
                if(not empty(thelist)){
-                  loop i from: 0 to: length (thelist) - 1 
-                  { 
+                  loop i from: 0 to: length (thelist) - 1 { 
     	              ask thelist at i{
-//    	              	av <- av + (demand - BaseDemand) / BaseDemand;
     	              	total_supply_new <- total_supply_new + supply ;
     	              	total_demand <- total_demand + demand ;
+    	              	total_emission <- total_emission + total_emission_per ;
     	              }
                   } 
-         
                 } 
          
          	   price <- price + alpha * (total_demand - total_supply_new) ;
@@ -92,8 +84,7 @@ global {
          	   
          	   market_value <- total_supply * price ;
 			   target_year <- 10.0 ;
-			   target_emission <- 75.0 ;
-         	   allowance_rate <- (initial_emission - target_emission)/(target_year * total_emission) ;
+         	   allowance_rate <- (initial_emission - target_emission)/(target_year * 1) ;
 //               av <- av/length(thelist) ;
 //               averageReduce <- (-100) * av ; //this is the average amount households have reduced
 //               
@@ -101,7 +92,6 @@ global {
              }
     }
 }
-
 
 species building {
 	string type; 
@@ -118,7 +108,6 @@ species road  {
 		draw shape color: color ;
 	}
 }
-
 
 species people skills:[moving] {
 	rgb pcolor <- #yellow ;
@@ -145,21 +134,20 @@ species people skills:[moving] {
 	float distance ;
 	float total_distance ;
 	
-	
 	reflex time_to_work when: current_date.hour = start_work and objective = "resting"{
 		objective <- "working" ;
 		the_target <- any_location_in (working_place);
-		distance <- location distance_to the_target ;
 	}
 		
 	reflex time_to_go_home when: current_date.hour = end_work and objective = "working"{
 		objective <- "resting" ;
 		the_target <- any_location_in (living_place);
-		distance <- location distance_to the_target ;
 	} 
 	 
 	reflex move when: the_target != nil {
 		do goto target: the_target on: the_graph ;
+//		speed <- 1000.0 ;
+//		carbon_cost<-1200.0 ;
 		list trave_mode <- 1 among['car', 'bus', 'bicycle'] ;
 		if travel_mode = ['car']{
 			carbon_cost <- 182.0 ;
@@ -167,22 +155,24 @@ species people skills:[moving] {
 		}
 		else if travel_mode = ['bus']{
 			carbon_cost <- 25.0 ;
-			speed <- rnd(1.0, 30.0) ; 
+			speed <- rnd(10.0, 30.0) ; 
 		}
 		else if travel_mode = ['bicycle']{
-			carbon_cost <- 0.0 ;
-			speed <- rnd(1.0, 15.0) ;
+			carbon_cost <- 10.0 ;
+			speed <- rnd(10.0, 15.0) ;
 		}
 		else{
-			carbon_cost <- 0.0 ;
-			speed <- rnd(1.0, 5.0) ;
+			carbon_cost <- 10.0 ;
+			speed <- rnd(10.0, 50.0) ;
 		}
-		
+		distance <- speed * step ;
+		emission <- carbon_cost * distance ;
+		total_emission_per <- total_emission_per + emission ;
+			
 		if the_target = location {
 			the_target <- nil ;
 			travel_time <- distance / speed ;
-			emission <- carbon_cost * distance ;
-			total_emission_per <- total_emission_per + emission ;
+			
 			}
 		}
 	
@@ -214,7 +204,6 @@ species people skills:[moving] {
         {
         	total_supply <- total_supply + noa ;
         }
-
 	}
 	aspect base {
 		draw circle(10) color: pcolor border: #black;
@@ -239,10 +228,15 @@ experiment road_traffic type: gui {
 			species road aspect: base ;
 			species people aspect: base ;
 		}
-		display chart_display refresh: every(10#cycles)  type: 2d { 
+		display chart_display refresh: every(10#cycles)  type: 2d {
+			chart "Carbon performance" type: series size: {1, 0.5} position: {0, 0} {
+				data "Mean carbon emission per capita" value: mean (people collect each.total_emission_per) style: line color: #green ;
+				data "Total carbon emission" value: total_emission style: line color: #red ;
+				}
 			chart "People Objectif" type: pie style: exploded size: {1, 0.5} position: {0, 0.5}{
 				data "Working" value: people count (each.objective="working") color: #magenta ;
 				data "Resting" value: people count (each.objective="resting") color: #blue ;
+
 			}
 		}
 	}
