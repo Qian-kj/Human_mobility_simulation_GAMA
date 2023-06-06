@@ -17,7 +17,7 @@ global {
 	geometry shape <- envelope(shape_file_bounds);
 	float step <- 10 #mn;
 	date starting_date <- date("2019-09-01-00-00-00");
-	int nb_people <- 1;
+	int nb_people <- 10;
 	int min_work_start <- 6;
 	int max_work_start <- 8;
 	int min_work_end <- 16; 
@@ -35,7 +35,8 @@ global {
 	float initial_emission <- 182.0 ;
 	float target_emission <- 75.0 ;
 	float target_year <- 10.0 ;
-	float total_emission;
+	float total_emission ;
+	float total_reward ;
 	float alpha ;
 	float market_value ;
 	
@@ -64,7 +65,7 @@ global {
 	}
 	reflex carbon_marketing{
             //update annual allowance rate
-            if (cycle > 0 and (cycle mod 12) = 0) {
+            if (cycle > 1 and (cycle mod 12) = 0) {
       	       list thelist <-list (species_of (people)); 
                if(not empty(thelist)){
                   loop i from: 0 to: length (thelist) - 1 { 
@@ -72,6 +73,7 @@ global {
     	              	total_supply_new <- total_supply_new + supply ;
     	              	total_demand <- total_demand + demand ;
     	              	total_emission <- total_emission + total_emission_per ;
+    	              	total_reward <- total_reward + reward;
     	              }
                   } 
                 } 
@@ -84,7 +86,8 @@ global {
          	   
          	   market_value <- total_supply * price ;
 			   target_year <- 10.0 ;
-         	   allowance_rate <- (initial_emission - target_emission)/(target_year * 1) ;
+			   allowance_rate <- (initial_emission - target_emission)/(target_year * 1) ;
+//         	   allowance_rate <- (initial_emission - target_emission)/(target_year * total_emission/nb_people) ;
 //               av <- av/length(thelist) ;
 //               averageReduce <- (-100) * av ; //this is the average amount households have reduced
 //               
@@ -126,7 +129,7 @@ species people skills:[moving] {
 	float demand ;
 	float supply ;
 	float reward ;
-	list travel_mode ;
+	string travel_mode ;
 	float travel_distance ;
 	float travel_speed ;
 	float travel_time ;
@@ -148,26 +151,28 @@ species people skills:[moving] {
 		do goto target: the_target on: the_graph ;
 //		speed <- 1000.0 ;
 //		carbon_cost<-1200.0 ;
-		list trave_mode <- 1 among['car', 'bus', 'bicycle'] ;
-		if travel_mode = ['car']{
+//		unknown trave_mode <- 1 among['car', 'bus', 'bicycle'] ;
+		travel_mode <- rnd_choice(["car"::0.25,"bus"::0.25,"bicycle"::0.25,"walk"::0.25]) ;
+		if travel_mode = 'car'{
 			carbon_cost <- 182.0 ;
-			speed <- rnd(10.0, 50.0);
+			speed <- rnd(10.0, 50.0) #km / #h;
 		}
-		else if travel_mode = ['bus']{
+		else if travel_mode = 'bus'{
 			carbon_cost <- 25.0 ;
-			speed <- rnd(10.0, 30.0) ; 
+			speed <- rnd(10.0, 30.0) #km / #h; 
 		}
-		else if travel_mode = ['bicycle']{
-			carbon_cost <- 10.0 ;
-			speed <- rnd(10.0, 15.0) ;
+		else if travel_mode = 'bicycle'{
+			carbon_cost <- 0.0 ;
+			speed <- rnd(10.0, 15.0) #km / #h;
 		}
-		else{
-			carbon_cost <- 10.0 ;
-			speed <- rnd(10.0, 50.0) ;
+		else if travel_mode = 'walk'{
+			carbon_cost <- 0.0 ;
+			speed <- rnd(1.0, 5.0) #km / #h;
 		}
-		distance <- speed * step ;
+		distance <- speed * step * 10 ; //km
 		emission <- carbon_cost * distance ;
 		total_emission_per <- total_emission_per + emission ;
+		reward <- allowance*distance - emission ;
 			
 		if the_target = location {
 			the_target <- nil ;
@@ -229,14 +234,26 @@ experiment road_traffic type: gui {
 			species people aspect: base ;
 		}
 		display chart_display refresh: every(10#cycles)  type: 2d {
-			chart "Carbon performance" type: series size: {1, 0.5} position: {0, 0} {
+			chart "Carbon Performance" type: series size: {0.5, 0.5} position: {0, 0} {
 				data "Mean carbon emission per capita" value: mean (people collect each.total_emission_per) style: line color: #green ;
 				data "Total carbon emission" value: total_emission style: line color: #red ;
 				}
-			chart "People Objectif" type: pie style: exploded size: {1, 0.5} position: {0, 0.5}{
-				data "Working" value: people count (each.objective="working") color: #magenta ;
-				data "Resting" value: people count (each.objective="resting") color: #blue ;
-
+			chart "Carbon Market" type: series size: {0.5, 0.5} position: {0.5, 0} {
+				data "Price" value: price style: line color: #green ;
+				}
+			chart "Reward" type: series size: {0.5, 0.5} position: {0, 0.5} {
+				data "Personal reward" value: mean (people collect each.reward) style: line color: #green ;
+				data "Total reward" value: total_reward style: line color: #blue ;
+				}
+//			chart "People Object" type: pie style: exploded size: {0.5, 0.5} position: {0, 0.5}{
+//				data "Working" value: people count (each.objective="working") color: #magenta ;
+//				data "Resting" value: people count (each.objective="resting") color: #blue ;
+//				}
+			chart "Travel Mode" type: pie style: exploded size: {0.5, 0.5} position: {0.5, 0.5}{
+				data "Bus" value: people count (each.travel_mode="bus") color: #magenta ;
+				data "Car" value: people count (each.travel_mode="car") color: #blue ;
+				data "Bicycle" value: people count (each.travel_mode="bicycle") color: #red ;
+				data "Walk" value: people count (each.travel_mode="walk") color: #yellow ;
 			}
 		}
 	}
